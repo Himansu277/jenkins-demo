@@ -1,0 +1,25 @@
+pipeline {
+    agent none
+    stages {
+        stage('Build') {
+            agent { label 'docker-build' }
+            steps {
+                sh 'docker buildx build -t myregistry.com/myapp:${BUILD_NUMBER} .'
+            }
+        }
+        stage('Push') {
+            agent { label 'docker-build' }
+            steps {
+                sh 'docker push myregistry.com/myapp:${BUILD_NUMBER}'
+            }
+        }
+        stage('Update Manifests') {
+            agent { label 'deploy' }
+            steps {
+                sh 'sed -i "s/tag:.*/tag: ${BUILD_NUMBER}/" k8s/deployment.yaml'
+                sh 'git commit -am "Update image tag to ${BUILD_NUMBER}"'
+                sh 'git push origin main'
+            }
+        }
+    }
+}
